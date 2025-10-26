@@ -235,17 +235,35 @@ const questions = [
   }
 ];
 
-function askQuestion(){
-  const q = questions[Math.floor(Math.random()*questions.length)];
-  document.getElementById("questionText").innerText=q.text;
-  document.getElementById("option1").innerText=q.options[0];
-  document.getElementById("option2").innerText=q.options[1];
-  document.getElementById("option3").innerText=q.options[2];
-  document.getElementById("questionBox").style.display="block";
+let askedQuestions = new Set();
 
-  [1,2,3].forEach(i=>{
-    document.getElementById("option"+i).onclick=()=>{
-      showMessage(q.responses[i-1],2500);
+function askQuestion(){
+  // Filter questions that haven't been asked yet
+  const remainingQuestions = questions.filter((q, index) => !askedQuestions.has(index));
+  if(remainingQuestions.length === 0){
+    // Reset if all questions have been asked
+    askedQuestions.clear();
+    askQuestion();
+    return;
+  }
+
+  const qIndex = Math.floor(Math.random() * remainingQuestions.length);
+  const q = remainingQuestions[qIndex];
+  const globalIndex = questions.indexOf(q);
+  askedQuestions.add(globalIndex);
+
+  // Shuffle responses so they don't always match the same option
+  const shuffledIndices = [0,1,2].sort(() => Math.random() - 0.5);
+
+  document.getElementById("questionText").innerText = q.text;
+  document.getElementById("option1").innerText = q.options[0];
+  document.getElementById("option2").innerText = q.options[1];
+  document.getElementById("option3").innerText = q.options[2];
+  document.getElementById("questionBox").style.display = "block";
+
+  [1,2,3].forEach(i => {
+    document.getElementById("option"+i).onclick = () => {
+      showMessage(q.responses[shuffledIndices[i-1]], 2500);
       document.getElementById("questionBox").style.display="none";
     };
   });
@@ -276,10 +294,41 @@ function askEndGameQuestion(){
 
 // Final swarm animation
 function spawnSeerlingSwarm(){
-  seerling=[];
-  for(let i=0;i<100;i++){
-    seerling.push({x:Math.random()*canvas.width, y:Math.random()*canvas.height});
+  seerling = [];
+  for(let i = 0; i < 100; i++){
+    seerling.push({x: Math.random() * canvas.width, y: Math.random() * canvas.height});
   }
+
+  const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+  const originalBg = canvas.style.background;
+  let freq = 100;
+  let flashToggle = false;
+  
+  // Sync flash and synth
+  const interval = setInterval(() => {
+    // --- Flashing red background ---
+    canvas.style.background = flashToggle
+      ? "radial-gradient(circle at center, #500000, #300000, #000000)"
+      : "radial-gradient(circle at center, #000, #050505, #0a0a0a)";
+    flashToggle = !flashToggle;
+
+    // --- Creepy synth ---
+    const osc = ctxAudio.createOscillator();
+    const gain = ctxAudio.createGain();
+    osc.connect(gain); gain.connect(ctxAudio.destination);
+    osc.type = "sawtooth";
+    osc.frequency.value = freq + Math.random() * 60;
+    gain.gain.setValueAtTime(0.08, ctxAudio.currentTime);
+    osc.start();
+    osc.stop(ctxAudio.currentTime + 0.2);
+    freq += 15; // rising pitch
+  }, 250); // flash & synth interval
+
+  // Stop after 10 seconds
+  setTimeout(() => {
+    clearInterval(interval);
+    canvas.style.background = originalBg;
+  }, 10000);
 }
 
 // Buttons
