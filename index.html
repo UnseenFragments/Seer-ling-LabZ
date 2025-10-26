@@ -106,67 +106,26 @@ let hatched = false;
 let messageBox = document.getElementById("message");
 let seerlingMaxLength = 10;
 
-// Questions data
+// Questions and responses
 const questions = [
-  {
-    text: "Would you sacrifice one to save many?",
-    options: ["Yes, always","No, never","Depends on who"],
-    responses: [
-      "Seerling frowns: heroic, predictable.",
-      "Seerling laughs: selfish much?",
-      "Seerling tilts head: clever, cowardly."
-    ]
-  },
-  {
-    text: "Is artificial life less sacred than biological?",
-    options:["Yes","No","Maybe"],
-    responses:[
-      "Seerling scoffs: biased thinking.",
-      "Seerling nods: surprisingly empathetic.",
-      "Seerling shrugs: wishy-washy."
-    ]
-  },
-  {
-    text:"Would you merge your mind with a machine?",
-    options:["Yes","No","Maybe"],
-    responses:[
-      "Seerling beeps: bold choice.",
-      "Seerling sighs: weak hesitation.",
-      "Seerling buzzes: indecisive mortal."
-    ]
-  },
-  {
-    text:"If emotion is simulated, is it real?",
-    options:["Yes","No","Not sure"],
-    responses:[
-      "Seerling hums: profound.",
-      "Seerling rolls eyes: cliche.",
-      "Seerling beeps: uncertain like you."
-    ]
-  },
-  {
-    text:"Would you erase pain if it erased growth?",
-    options:["Yes","No","Depends"],
-    responses:[
-      "Seerling blinks: convenient.",
-      "Seerling frowns: naive.",
-      "Seerling shrugs: cowardly."
-    ]
-  }
+  { text: "Would you sacrifice one to save many?", options: ["Yes, always","No, never","Depends on who"], responses:["Seerling frowns: heroic, predictable.","Seerling laughs: selfish much?","Seerling tilts head: clever, cowardly."] },
+  { text: "Is artificial life less sacred than biological?", options:["Yes","No","Maybe"], responses:["Seerling scoffs: biased thinking.","Seerling nods: surprisingly empathetic.","Seerling shrugs: wishy-washy."] },
+  { text:"Would you merge your mind with a machine?", options:["Yes","No","Maybe"], responses:["Seerling beeps: bold choice.","Seerling sighs: weak hesitation.","Seerling buzzes: indecisive mortal."] },
+  { text:"If emotion is simulated, is it real?", options:["Yes","No","Not sure"], responses:["Seerling hums: profound.","Seerling rolls eyes: cliche.","Seerling beeps: uncertain like you."] },
+  { text:"Would you erase pain if it erased growth?", options:["Yes","No","Depends"], responses:["Seerling blinks: convenient.","Seerling frowns: naive.","Seerling shrugs: cowardly."] }
 ];
 
 let askedQuestions = new Set();
-// Track used responses per question
 const usedResponses = questions.map(()=>new Set());
 
-// Audio beep
-function synthBeep() {
+// Basic beep
+function synthBeep(frequency=200) {
   const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
   const osc = ctxAudio.createOscillator();
   const gain = ctxAudio.createGain();
   osc.connect(gain); gain.connect(ctxAudio.destination);
   osc.type = "square";
-  osc.frequency.value = 200 + Math.random()*600;
+  osc.frequency.value = frequency + Math.random()*600;
   gain.gain.setValueAtTime(0.1, ctxAudio.currentTime);
   osc.start(); osc.stop(ctxAudio.currentTime+0.1);
 }
@@ -179,116 +138,43 @@ function showMessage(text,duration=2000){
 }
 
 // Egg animations
-function drawEgg() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.beginPath();
-  ctx.ellipse(canvas.width/2,canvas.height/2,50,70,0,0,Math.PI*2);
-  ctx.fillStyle="#ccc"; ctx.fill();
-  ctx.strokeStyle="#888"; ctx.stroke();
-}
+function drawEgg(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.beginPath(); ctx.ellipse(canvas.width/2,canvas.height/2,50,70,0,0,Math.PI*2); ctx.fillStyle="#ccc"; ctx.fill(); ctx.strokeStyle="#888"; ctx.stroke(); }
+function crackEgg(){ ctx.clearRect(0,0,canvas.width,canvas.height); ctx.beginPath(); ctx.ellipse(canvas.width/2-30,canvas.height/2,50,70,0,0,Math.PI*2); ctx.ellipse(canvas.width/2+30,canvas.height/2,50,70,0,0,Math.PI*2); ctx.fillStyle="#ccc"; ctx.fill(); }
+function hatchSeerling(){ seerling=[{x:canvas.width/2,y:canvas.height/2}]; hatched=true; animate(); }
+function moveSeerling(){ if(!hatched) return; const head={...seerling[0]}; head.x+=dx*speed; head.y+=dy*speed; if(head.x<=0||head.x>=canvas.width) dx*=-1; if(head.y<=0||head.y>=canvas.height) dy*=-1; seerling.unshift(head); seerling.pop(); }
+function drawSeerling(){ ctx.clearRect(0,0,canvas.width,canvas.height); for(let i=0;i<seerling.length;i++){ const seg=seerling[i]; const color=i===0?"#00ffff":"rgba(0,255,255,0.4)"; ctx.beginPath(); ctx.arc(seg.x,seg.y,10,0,Math.PI*2); ctx.fillStyle=color; ctx.fill(); }}
+function animate(){ if(!hatched) return; moveSeerling(); drawSeerling(); requestAnimationFrame(animate); }
 
-function crackEgg() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.beginPath();
-  ctx.ellipse(canvas.width/2-30,canvas.height/2,50,70,0,0,Math.PI*2);
-  ctx.ellipse(canvas.width/2+30,canvas.height/2,50,70,0,0,Math.PI*2);
-  ctx.fillStyle="#ccc"; ctx.fill();
-}
+// Grow seerling
+function growSeerling(){ const tail=seerling[seerling.length-1]; seerling.push({x:tail.x,y:tail.y}); synthBeep(); showMessage(`Seerling grew to ${seerling.length}!`); speed+=0.2; if(seerling.length>=seerlingMaxLength){ askEndGameQuestion(); } else { askQuestion(); } }
 
-function hatchSeerling() {
-  seerling = [];
-  seerling.push({x: canvas.width/2, y: canvas.height/2});
-  hatched = true;
-  animate();
-}
+// Ask question without repetition
+function askQuestion(){
+  const remaining = questions.filter((q,i)=>!askedQuestions.has(i));
+  if(remaining.length===0){ askedQuestions.clear(); usedResponses.forEach(set=>set.clear()); askQuestion(); return; }
+  const q = remaining[Math.floor(Math.random()*remaining.length)];
+  const gIndex = questions.indexOf(q); askedQuestions.add(gIndex);
 
-// Seerling movement & draw
-function moveSeerling() {
-  if(!hatched) return;
-  const head = {...seerling[0]};
-  head.x += dx*speed; head.y += dy*speed;
-  if(head.x <=0 || head.x >= canvas.width) dx*=-1;
-  if(head.y <=0 || head.y >= canvas.height) dy*=-1;
-  seerling.unshift(head);
-  seerling.pop();
-}
+  let avail = [0,1,2].filter(i=>!usedResponses[gIndex].has(i));
+  if(avail.length===0){ usedResponses[gIndex].clear(); avail=[0,1,2]; }
+  const respIndex = avail[Math.floor(Math.random()*avail.length)]; usedResponses[gIndex].add(respIndex);
 
-function drawSeerling() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  for(let i=0;i<seerling.length;i++){
-    const seg = seerling[i];
-    const color = i===0 ? "#00ffff" : "rgba(0,255,255,0.4)";
-    ctx.beginPath(); ctx.arc(seg.x,seg.y,10,0,Math.PI*2); ctx.fillStyle=color; ctx.fill();
-  }
-}
+  const shuffled=[0,1,2].sort(()=>Math.random()-0.5);
 
-function animate() {
-  if(!hatched) return;
-  moveSeerling();
-  drawSeerling();
-  requestAnimationFrame(animate);
-}
+  document.getElementById("questionText").innerText=q.text;
+  document.getElementById("option1").innerText=q.options[0];
+  document.getElementById("option2").innerText=q.options[1];
+  document.getElementById("option3").innerText=q.options[2];
+  document.getElementById("questionBox").style.display="block";
 
-// Grow Seerling & trigger questions
-function growSeerling() {
-  const tail = seerling[seerling.length-1];
-  seerling.push({x:tail.x,y:tail.y});
-  synthBeep();
-  showMessage(`Seerling grew to ${seerling.length}!`);
-  speed+=0.2;
-  if(seerling.length>=seerlingMaxLength){
-    askEndGameQuestion();
-  } else {
-    askQuestion();
-  }
-}
-
-// Ask a question without repeating questions or responses
-function askQuestion() {
-  const remainingQuestions = questions.filter((q,index)=>!askedQuestions.has(index));
-  if(remainingQuestions.length === 0){
-    askedQuestions.clear();
-    usedResponses.forEach(set=>set.clear());
-    askQuestion();
-    return;
-  }
-
-  const qIndex = Math.floor(Math.random()*remainingQuestions.length);
-  const q = remainingQuestions[qIndex];
-  const globalIndex = questions.indexOf(q);
-  askedQuestions.add(globalIndex);
-
-  // Pick an unused response
-  const availableResponses = [0,1,2].filter(i=>!usedResponses[globalIndex].has(i));
-  if(availableResponses.length === 0){
-    usedResponses[globalIndex].clear();
-    availableResponses.push(0,1,2);
-  }
-  const responseIndex = availableResponses[Math.floor(Math.random()*availableResponses.length)];
-  usedResponses[globalIndex].add(responseIndex);
-
-  // Shuffle options for display
-  const shuffledIndices = [0,1,2].sort(()=>Math.random()-0.5);
-
-  document.getElementById("questionText").innerText = q.text;
-  document.getElementById("option1").innerText = q.options[0];
-  document.getElementById("option2").innerText = q.options[1];
-  document.getElementById("option3").innerText = q.options[2];
-  document.getElementById("questionBox").style.display = "block";
-
-  [1,2,3].forEach(i=>{
-    document.getElementById("option"+i).onclick = ()=>{
-      showMessage(q.responses[responseIndex],2500);
-      document.getElementById("questionBox").style.display="none";
-    };
-  });
+  [1,2,3].forEach(i=>{ document.getElementById("option"+i).onclick=()=>{ showMessage(q.responses[respIndex],2500); document.getElementById("questionBox").style.display="none"; }; });
 }
 
 // Endgame question
 function askEndGameQuestion(){
-  const qText = "Will you allow the Seerling to interlink with you?";
-  const qOpts = ["Yes","No","Maybe"];
-  const qResp = [
+  const qText="Will you allow the Seerling to interlink with you?";
+  const qOpts=["Yes","No","Maybe"];
+  const qResp=[
     "Congratulations! The Seerling swarm celebrates your choice!",
     "Warning: You will need to wait for imminent domain subjugation!",
     "Seerling scoffs: indecisive, prepare consequences!"
@@ -303,145 +189,95 @@ function askEndGameQuestion(){
     document.getElementById("option"+i).onclick=()=>{
       showMessage(qResp[i-1],5000);
       document.getElementById("questionBox").style.display="none";
-      if(i===1){ // "Yes" selected
-        spawnSeerlingSwarm();
-      }
-      if(i===2){ // "No" selected -> new blue ominous effect
-        spawnBlueOminousScreen();
-      }
+      if(i===1){ spawnSeerlingSwarm(); }
+      if(i===2){ spawnBlueOminousScreen(); }
     };
   });
 }
 
-// New blue ominous end screen
+// Blue ominous end screen
 function spawnBlueOminousScreen(){
   const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
   const originalBg = canvas.style.background;
-  let freq = 80; // base frequency
-  let flashToggle = false;
+  let freq=80, flash=false;
 
-  // Remove any existing end-screen text before adding new
-  const existingText = document.getElementById("blueOminousText");
-  if(existingText) document.body.removeChild(existingText);
-
-  // Create single floating text
-  const subjugationText = document.createElement("div");
-  subjugationText.id = "blueOminousText"; // unique id
-  subjugationText.innerText = "Wait patiently for imminent domain subjugation";
-  subjugationText.style.position = "fixed";
-  subjugationText.style.top = "50%";
-  subjugationText.style.left = "50%";
-  subjugationText.style.transform = "translate(-50%,-50%)";
-  subjugationText.style.color = "#00ffff";
-  subjugationText.style.fontFamily = "Courier New, monospace";
-  subjugationText.style.fontSize = "24px";
-  subjugationText.style.textAlign = "center";
-  subjugationText.style.textShadow = "0 0 10px cyan";
-  subjugationText.style.zIndex = 30;
+  const subjugationText=document.createElement("div");
+  subjugationText.innerText="Wait patiently for imminent domain subjugation";
+  subjugationText.style.position="fixed";
+  subjugationText.style.top="50%";
+  subjugationText.style.left="50%";
+  subjugationText.style.transform="translate(-50%,-50%)";
+  subjugationText.style.color="#00ffff";
+  subjugationText.style.fontFamily="Courier New, monospace";
+  subjugationText.style.fontSize="24px";
+  subjugationText.style.textAlign="center";
+  subjugationText.style.textShadow="0 0 10px cyan";
+  subjugationText.style.zIndex=30;
   document.body.appendChild(subjugationText);
 
-  const interval = setInterval(()=>{
-    // Flash background
-    canvas.style.background = flashToggle
-      ? "radial-gradient(circle at center, #000050, #000033, #000000)"
-      : "radial-gradient(circle at center, #000020, #000011, #000000)";
-    flashToggle = !flashToggle;
-
-    // Creepy, detuned synth
+  const interval=setInterval(()=>{
+    canvas.style.background = flash ? "radial-gradient(circle at center, #000050, #000033, #000000)" : "radial-gradient(circle at center, #000020, #000011, #000000)";
+    flash = !flash;
     const osc = ctxAudio.createOscillator();
     const gain = ctxAudio.createGain();
     osc.connect(gain); gain.connect(ctxAudio.destination);
-    osc.type = "square";
-    osc.frequency.value = freq + (Math.random()*40 - 20); // slight detune
-    gain.gain.setValueAtTime(0.08, ctxAudio.currentTime);
-    osc.start();
-    osc.stop(ctxAudio.currentTime + 0.25);
-    freq += 3; // slow rise
+    osc.type="sawtooth"; osc.frequency.value=freq+(Math.random()*40-20); gain.gain.setValueAtTime(0.08, ctxAudio.currentTime);
+    osc.start(); osc.stop(ctxAudio.currentTime+0.25);
+    freq+=3;
   },250);
 
-  setTimeout(()=>{
-    clearInterval(interval);
-    canvas.style.background = originalBg;
-    document.body.removeChild(subjugationText);
-  },10000);
+  setTimeout(()=>{ clearInterval(interval); canvas.style.background=originalBg; document.body.removeChild(subjugationText); },10000);
 }
 
-// Swarm animation
+// Red interlink end screen
 function spawnSeerlingSwarm(){
-  seerling = [];
-  for(let i = 0; i < 100; i++){
-    seerling.push({x: Math.random() * canvas.width, y: Math.random() * canvas.height});
-  }
-
+  seerling=[];
+  for(let i=0;i<100;i++){ seerling.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height}); }
   const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
-  const originalBg = canvas.style.background;
-  let freq = 100;
-  let flashToggle = false;
+  const originalBg=canvas.style.background;
+  let freq=100, flash=false;
 
-  // Floating red text
-  const interlinkText = document.createElement("div");
-  interlinkText.innerText = "You will now be Interlinked. Please stand by.";
-  interlinkText.style.position = "fixed";
-  interlinkText.style.top = "50%";
-  interlinkText.style.left = "50%";
-  interlinkText.style.transform = "translate(-50%,-50%)";
-  interlinkText.style.color = "#ff0000";
-  interlinkText.style.fontFamily = "Courier New, monospace";
-  interlinkText.style.fontSize = "24px";
-  interlinkText.style.textAlign = "center";
-  interlinkText.style.textShadow = "0 0 15px red";
-  interlinkText.style.zIndex = 30;
+  const interlinkText=document.createElement("div");
+  interlinkText.innerHTML="You will now be Interlinked now.<br>Please stand by."; 
+  interlinkText.style.position="fixed";
+  interlinkText.style.top="50%";
+  interlinkText.style.left="50%";
+  interlinkText.style.transform="translate(-50%,-50%)";
+  interlinkText.style.color="#ff0000";
+  interlinkText.style.fontFamily="Courier New, monospace";
+  interlinkText.style.fontSize="24px";
+  interlinkText.style.textAlign="center";
+  interlinkText.style.textShadow="0 0 15px red";
+  interlinkText.style.zIndex=30;
   document.body.appendChild(interlinkText);
 
-  // Flash and synth interval
-  const interval = setInterval(() => {
-    canvas.style.background = flashToggle
-      ? "radial-gradient(circle at center, #500000, #300000, #000000)"
-      : "radial-gradient(circle at center, #000, #050505, #0a0a0a)";
-    flashToggle = !flashToggle;
-
+  const interval=setInterval(()=>{
+    canvas.style.background = flash ? "radial-gradient(circle at center, #500000, #300000, #000000)" : "radial-gradient(circle at center, #000, #050505, #0a0a0a)";
+    flash = !flash;
     const osc = ctxAudio.createOscillator();
     const gain = ctxAudio.createGain();
     osc.connect(gain); gain.connect(ctxAudio.destination);
-    osc.type = "sawtooth";
-    osc.frequency.value = freq + Math.random() * 60;
-    gain.gain.setValueAtTime(0.08, ctxAudio.currentTime);
-    osc.start();
-    osc.stop(ctxAudio.currentTime + 0.2);
-    freq += 15;
-  }, 250);
+    osc.type="sawtooth"; osc.frequency.value=freq+Math.random()*60; gain.gain.setValueAtTime(0.08,ctxAudio.currentTime);
+    osc.start(); osc.stop(ctxAudio.currentTime+0.2); freq+=15;
+  },250);
 
-  // Stop after 10 seconds
-  setTimeout(() => {
-    clearInterval(interval);
-    canvas.style.background = originalBg;
-    document.body.removeChild(interlinkText);
-  }, 10000);
+  setTimeout(()=>{ clearInterval(interval); canvas.style.background=originalBg; document.body.removeChild(interlinkText); },10000);
 }
 
-// Buttons
-document.getElementById("feedBtn").addEventListener("click",()=>{
-  if(!hatched) return showMessage("The egg hasn't hatched yet!");
-  growSeerling();
+// Button actions
+["feedBtn","playBtn","hugBtn"].forEach(id=>{
+  document.getElementById(id).addEventListener("click",()=>{
+    if(!hatched) return showMessage("The egg hasn't hatched yet!");
+    growSeerling();
+  });
 });
-document.getElementById("playBtn").addEventListener("click",()=>{
-  if(!hatched) return showMessage("The egg hasn't hatched yet!");
-  growSeerling();
-});
-document.getElementById("hugBtn").addEventListener("click",()=>{
-  if(!hatched) return showMessage("The egg hasn't hatched yet!");
-  growSeerling();
-});
-document.getElementById("resetBtn").addEventListener("click",()=>{ window.location.reload(); });
+document.getElementById("resetBtn").addEventListener("click",()=>window.location.reload());
 
 // Egg sequence
 function startEggSequence(){
   drawEgg();
   setTimeout(()=>crackEgg(),2000);
-  setTimeout(()=>{
-    showMessage("The Seerling has hatched!");
-    hatchSeerling();
-  },4000);
+  setTimeout(()=>{ showMessage("The Seerling has hatched!"); hatchSeerling(); },4000);
 }
 startEggSequence();
 
