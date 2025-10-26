@@ -320,8 +320,13 @@ function spawnBlueOminousScreen(){
   let freq = 80; // base frequency
   let flashToggle = false;
 
-  // Create floating text
+  // Remove any existing end-screen text before adding new
+  const existingText = document.getElementById("blueOminousText");
+  if(existingText) document.body.removeChild(existingText);
+
+  // Create single floating text
   const subjugationText = document.createElement("div");
+  subjugationText.id = "blueOminousText"; // unique id
   subjugationText.innerText = "Wait patiently for imminent domain subjugation";
   subjugationText.style.position = "fixed";
   subjugationText.style.top = "50%";
@@ -375,7 +380,7 @@ function spawnSeerlingSwarm(){
 
   // Floating red text
   const interlinkText = document.createElement("div");
-  interlinkText.innerText = "You will be Interlinked now. Stand by.";
+  interlinkText.innerText = "You will now be Interlinked. Please stand by.";
   interlinkText.style.position = "fixed";
   interlinkText.style.top = "50%";
   interlinkText.style.left = "50%";
