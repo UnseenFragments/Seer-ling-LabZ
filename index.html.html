@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seer-ling Labz</title>
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at center, #000, #050505, #0a0a0a);
+  font-family: "Courier New", monospace;
+  color: #00ffff;
+  text-align: center;
+}
+h1 {
+  margin: 10px 0;
+  color: #00ffff;
+  text-shadow: 0 0 10px cyan;
+}
+#controls {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+}
+button {
+  background: rgba(0,255,255,0.1);
+  color: #00ffff;
+  border: 1px solid #00ffff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-family: inherit;
+}
+button:hover { background: rgba(0,255,255,0.3); }
+#gameCanvas { position: absolute; top:0; left:0; z-index:1; }
+#message {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,255,255,0.1);
+  border: 1px solid #00ffff;
+  padding: 10px 20px;
+  border-radius: 10px;
+  display: none;
+  z-index: 10;
+}
+#questionBox {
+  display:none;
+  position: fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background: rgba(0,0,0,0.9);
+  color: #0ff;
+  border: 2px solid #0ff;
+  padding: 20px;
+  border-radius: 12px;
+  z-index: 20;
+}
+.optionBtn {
+  margin: 5px;
+  background: rgba(0,255,255,0.1);
+  color:#0ff;
+  border:1px solid #0ff;
+  border-radius:6px;
+  padding:6px 12px;
+  cursor:pointer;
+}
+.optionBtn:hover { background: rgba(0,255,255,0.3); }
+</style>
+</head>
+<body>
+<h1>Seer-ling Labz</h1>
+<canvas id="gameCanvas"></canvas>
+<div id="message"></div>
+<div id="questionBox">
+  <div id="questionText"></div>
+  <div style="margin-top:10px;">
+    <button class="optionBtn" id="option1"></button>
+    <button class="optionBtn" id="option2"></button>
+    <button class="optionBtn" id="option3"></button>
+  </div>
+</div>
+<div id="controls">
+  <button id="feedBtn">Feed</button>
+  <button id="playBtn">Play</button>
+  <button id="hugBtn">Hug</button>
+  <button id="resetBtn">Reset</button>
+</div>
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let seerling = [];
+let dx = 2, dy = 2;
+let speed = 2;
+let hatched = false;
+let messageBox = document.getElementById("message");
+let seerlingMaxLength = 10;
+
+function synthBeep() {
+  const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = ctxAudio.createOscillator();
+  const gain = ctxAudio.createGain();
+  osc.connect(gain); gain.connect(ctxAudio.destination);
+  osc.type = "square";
+  osc.frequency.value = 200 + Math.random()*600;
+  gain.gain.setValueAtTime(0.1, ctxAudio.currentTime);
+  osc.start(); osc.stop(ctxAudio.currentTime+0.1);
+}
+
+function showMessage(text,duration=2000){
+  messageBox.innerText = text;
+  messageBox.style.display="block";
+  setTimeout(()=>{ messageBox.style.display="none"; },duration);
+}
+
+// Egg Cracking Animation
+function drawEgg() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.beginPath();
+  ctx.ellipse(canvas.width/2,canvas.height/2,50,70,0,0,Math.PI*2);
+  ctx.fillStyle="#ccc"; ctx.fill();
+  ctx.strokeStyle="#888"; ctx.stroke();
+}
+
+function crackEgg() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.beginPath();
+  ctx.ellipse(canvas.width/2-30,canvas.height/2,50,70,0,0,Math.PI*2);
+  ctx.ellipse(canvas.width/2+30,canvas.height/2,50,70,0,0,Math.PI*2);
+  ctx.fillStyle="#ccc"; ctx.fill();
+}
+
+function hatchSeerling() {
+  seerling = [];
+  seerling.push({x: canvas.width/2, y: canvas.height/2});
+  hatched = true;
+  animate();
+}
+
+function moveSeerling() {
+  if(!hatched) return;
+  const head = {...seerling[0]};
+  head.x += dx*speed; head.y += dy*speed;
+  if(head.x <=0 || head.x >= canvas.width) dx*=-1;
+  if(head.y <=0 || head.y >= canvas.height) dy*=-1;
+  seerling.unshift(head);
+  seerling.pop();
+}
+
+function drawSeerling() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  for(let i=0;i<seerling.length;i++){
+    const seg = seerling[i];
+    const color = i===0 ? "#00ffff" : "rgba(0,255,255,0.4)";
+    ctx.beginPath(); ctx.arc(seg.x,seg.y,10,0,Math.PI*2); ctx.fillStyle=color; ctx.fill();
+  }
+}
+
+function animate() {
+  if(!hatched) return;
+  moveSeerling();
+  drawSeerling();
+  requestAnimationFrame(animate);
+}
+
+function growSeerling() {
+  const tail = seerling[seerling.length-1];
+  seerling.push({x:tail.x,y:tail.y});
+  synthBeep();
+  showMessage(`Seerling grew to ${seerling.length}!`);
+  speed+=0.2;
+  if(seerling.length>=seerlingMaxLength){
+    askEndGameQuestion();
+  } else {
+    askQuestion();
+  }
+}
+
+// Questions Data
+const questions = [
+  {
+    text: "Would you sacrifice one to save many?",
+    options: ["Yes, always","No, never","Depends on who"],
+    responses: [
+      "Seerling frowns: heroic, predictable.",
+      "Seerling laughs: selfish much?",
+      "Seerling tilts head: clever, cowardly."
+    ]
+  },
+  {
+    text: "Is artificial life less sacred than biological?",
+    options:["Yes","No","Maybe"],
+    responses:[
+      "Seerling scoffs: biased thinking.",
+      "Seerling nods: surprisingly empathetic.",
+      "Seerling shrugs: wishy-washy."
+    ]
+  },
+  {
+    text:"Would you merge your mind with a machine?",
+    options:["Yes","No","Maybe"],
+    responses:[
+      "Seerling beeps: bold choice.",
+      "Seerling sighs: weak hesitation.",
+      "Seerling buzzes: indecisive mortal."
+    ]
+  },
+  {
+    text:"If emotion is simulated, is it real?",
+    options:["Yes","No","Not sure"],
+    responses:[
+      "Seerling hums: profound.",
+      "Seerling rolls eyes: cliche.",
+      "Seerling beeps: uncertain like you."
+    ]
+  },
+  {
+    text:"Would you erase pain if it erased growth?",
+    options:["Yes","No","Depends"],
+    responses:[
+      "Seerling blinks: convenient.",
+      "Seerling frowns: naive.",
+      "Seerling shrugs: cowardly."
+    ]
+  }
+];
+
+function askQuestion(){
+  const q = questions[Math.floor(Math.random()*questions.length)];
+  document.getElementById("questionText").innerText=q.text;
+  document.getElementById("option1").innerText=q.options[0];
+  document.getElementById("option2").innerText=q.options[1];
+  document.getElementById("option3").innerText=q.options[2];
+  document.getElementById("questionBox").style.display="block";
+
+  [1,2,3].forEach(i=>{
+    document.getElementById("option"+i).onclick=()=>{
+      showMessage(q.responses[i-1],2500);
+      document.getElementById("questionBox").style.display="none";
+    };
+  });
+}
+
+function askEndGameQuestion(){
+  const qText = "Will you allow the Seerling to interlink with you?";
+  const qOpts = ["Yes","No","Maybe"];
+  const qResp = [
+    "Congratulations! The Seerling swarm celebrates your choice!",
+    "Warning: You will need to wait for imminent domain subjugation!",
+    "Seerling scoffs: indecisive, prepare consequences!"
+  ];
+  document.getElementById("questionText").innerText=qText;
+  document.getElementById("option1").innerText=qOpts[0];
+  document.getElementById("option2").innerText=qOpts[1];
+  document.getElementById("option3").innerText=qOpts[2];
+  document.getElementById("questionBox").style.display="block";
+
+  [1,2,3].forEach(i=>{
+    document.getElementById("option"+i).onclick=()=>{
+      showMessage(qResp[i-1],5000);
+      document.getElementById("questionBox").style.display="none";
+      if(i===1){ spawnSeerlingSwarm(); }
+    };
+  });
+}
+
+// Final swarm animation
+function spawnSeerlingSwarm(){
+  seerling=[];
+  for(let i=0;i<100;i++){
+    seerling.push({x:Math.random()*canvas.width, y:Math.random()*canvas.height});
+  }
+}
+
+// Buttons
+document.getElementById("feedBtn").addEventListener("click",()=>{
+  if(!hatched) return showMessage("The egg hasn't hatched yet!");
+  growSeerling();
+});
+document.getElementById("playBtn").addEventListener("click",()=>{
+  if(!hatched) return showMessage("The egg hasn't hatched yet!");
+  growSeerling();
+});
+document.getElementById("hugBtn").addEventListener("click",()=>{
+  if(!hatched) return showMessage("The egg hasn't hatched yet!");
+  growSeerling();
+});
+document.getElementById("resetBtn").addEventListener("click",()=>{ window.location.reload(); });
+
+// Egg Sequence
+function startEggSequence(){
+  drawEgg();
+  setTimeout(()=>crackEgg(),2000);
+  setTimeout(()=>{
+    showMessage("The Seerling has hatched!");
+    hatchSeerling();
+  },4000);
+}
+startEggSequence();
+
+window.addEventListener("resize",()=>{ canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
+</script>
+</body>
+</html>
